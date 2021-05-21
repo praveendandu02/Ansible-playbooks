@@ -1,0 +1,69 @@
+---
+- hosts: all
+  become: yes
+
+
+  vars:
+    nfs_mountpoint: '/nfsmount'
+    nfsserver: '18.222.252.103'
+    nfsexport: '/nfsshare'
+
+
+  tasks:
+    
+
+  ## NFS Packages Client/server ##
+  #
+  #ensure NFS packages are installed
+    - name: check and install nfs packages
+      yum:
+       name={{ item }}
+       state=installed
+      with_items:
+       - nfs-utils
+      tags: nfs_client,nfs_server
+
+
+  ## NFS Server configuration ##
+  #ensure mountpoint is created on the client machine
+    - name: copy /etc/exports
+      template:
+        src=templates/exports.j2
+        dest=/etc/exports
+        owner=root
+        group=root
+        mode=755
+      tags: nfs_server,copy_export
+
+  #ensure nfs service is configured to started
+    - name: start the nfs service
+      service:
+        name=nfs
+        state=restarted
+        enabled=yes
+      tags: nfs_server
+
+
+
+  ## NFS Client Configuration ##
+  #
+
+  # ensure mountpoint is created on the client machine
+    - name: create a mountpoint for nfs
+      file:
+        path={{ nfs_mountpoint }}
+        state=directory
+        mode=755
+        owner=root
+      tags: nfs_client
+
+  # ensure fstab gets updated and filesystem mounted
+    - name: update fstab and mount nfs share
+      mount:
+        name={{ nfs_mountpoint }}
+        src={{ nfsserver }}:/{{ nfsexport }}
+        fstype=nfs
+        opts=defaults,rw,bg
+        dump=0
+        passno=2
+        state=mounted
