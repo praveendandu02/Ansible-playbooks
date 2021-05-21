@@ -1,0 +1,26 @@
+--- # ansible-playbook fetch.yml
+
+- name: run task on all hosts
+  hosts: "*"
+  become: yes
+  tasks:
+    - name: ensure a file exists
+      file:
+        path: "/home/cloud_user/{{ item }}"
+        state: touch
+      loop:
+        - testfile1
+        - testfile
+
+    - name: fetch testfiles
+      fetch:
+        src: "/home/cloud_user/{{ item }}"
+        dest: "/tmp/"
+        flat: true
+      loop:
+        - testfile
+        - testfile1
+
+    - name: run command
+      command: 
+        cmd: ls /tmp/
