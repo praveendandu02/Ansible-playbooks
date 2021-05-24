@@ -1,0 +1,48 @@
+****************ANSIBLE-UBUNTU-INSTALLATION**************
+$ sudo apt update
+$ sudo apt install software-properties-common
+$ sudo add-apt-repository --yes --update ppa:ansible/ansible
+$ sudo apt install ansible
+
+- add hosts into default hosts file by cd into sudo vim /etc/ansible/hosts.
+  note: we are doing sudo here as this file is owned by route
+- SSH configuration
+  -create user ansible 
+   sudo useradd ansible
+   sudo passwd ansible
+  - Login into ansible user
+    su - ansible
+  - now run ansible ping to localhost
+    ansible localhost -m ping
+    now enter the pasword
+    if you get error then ssh into localhost
+    ssh localhost
+    exit now
+    and run the ansible ping command
+    
+- configure slave node (centos)
+  - ssh into slave node user@slvaenode
+  - sudo into root sudo -i
+  - create ansible user
+  
+- configure slave node (ubuntu)
+  - ssh into slave node user@slavenode
+  - sudo into root sudo su -
+  - create ansible user
+    adduser ansible
+    
+- go back to control node and login into ansible user and create a ssh preshared key for authentication
+  - generate ssh key: ssh-keygen 
+  - enter all defaults
+  - now copy ssh key into slave nodes
+  - ssh-copy-id node1
+  - enter the password
+  - do the same for remaining nodes
+  - we need to do the same for localhost as well 
+  - ssh localhost
+  
+- it is also possible to prompt for a sudo password at runtime using -K (note uppercase) if desired (note this can become a challenge when executing against many systems)
+
+- For the most automated configuration, edit `etc/sudoers` to allow the ansible user to use sudo with any command without password by using the line:
+  ansible ALL=(ALL) NOPASSWD: ALL
+  
