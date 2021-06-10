@@ -1,0 +1,10 @@
+---
+- hosts: all
+  name: CWOM restore
+  gather_facts: false
+
+
+  tasks:
+  - name: execute restore
+    command:
+        cmd: /srv/tomcat6/script/appliance/vmtrestore.sh -o full
