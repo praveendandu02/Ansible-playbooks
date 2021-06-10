@@ -1,0 +1,13 @@
+---
+- hosts: all
+  name: download backupfiles from NFS-share
+  vars:
+    nfsshare_path: 'http://172.16.65.132/cwombackup/{{ item }}'
+  tasks:
+  - name: Download backup files
+    get_url:
+      url: '{{ nfsshare_path }}'
+      dest: /tmp/
+    loop:
+      - vmtbackup.zip
+      - vmtdb_dump.sql.xz
