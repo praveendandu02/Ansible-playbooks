@@ -1,0 +1,92 @@
+---
+- hosts: localhost
+  name: Deploy CWOM to ESXi Host
+  gather_facts: false
+  vars: 
+    esxi_address: '172.16.10.21'
+    esxi_username: 'root'
+    esxi_password: ''
+    vcenter_address: '172.16.10.20'
+    vcenter_username: administrator@vsphere.local
+    vcenter_password: ''
+    cwom_password: ''
+    cwom_hostname: 'CWOM-01'
+    cwom_address: '172.16.10.120'
+    net_prefix: '24'
+    net_gateway: '172.16.10.254'
+    dns_servers: '172.16.10.100'
+    domain: 'thor.iws.navy.mil'
+    searchpath: "thor.iws.navy.mil"
+    cwom_size: 'tiny'
+    datastore: 'CG61'
+    networks: 'Storage Controller Management Network'
+    cwom_ova_name: cwom64-opsmgr-2.3.17.ova
+##    cwom_ova_url: 172.16.20.10:/data/nfs/Software/VMware/
+##    cwom_ova_url: http://172.16.10.60/cwom/{{ cwom_ova_name }}
+    cwom_ova_url: http://172.16.10.124:3000/{{ cwom_ova_name }}
+##    cwom_ova_file: '/mnt/iso/{{ cwom_ova_name }}'
+    cwom_ova_file: '/mnt/iso/{{ cwom_ova_name }}'
+
+  tasks:
+  - name: Creating a Directory to mount the NFS Storage
+    become: true
+    file:
+      path: /mnt/iso
+      state: directory
+      mode: 0777
+
+  - name: Download OVA
+    get_url:
+      url: '{{ cwom_ova_url }}'
+      dest: /mnt/iso
+
+  - vmware_deploy_ovf:
+      hostname: '{{ esxi_address }}'
+      username: '{{ esxi_username }}'
+      password: '{{ esxi_password }}'
+      name: '{{ cwom_hostname }}' 
+      ovf: '{{ cwom_ova_file }}' 
+      wait_for_ip_address: true
+      validate_certs: no
+      inject_ovf_env: true
+      datastore: '{{ datastore }}'
+      networks: "{u'Network 1':u'{{ networks }}'}"
+      properties:
+        DeploymentOption.value: '{{ cwom_size }}'
+        guestinfo.cis.appliance.net.addr.family: 'ipv4'
+        guestinfo.cis.appliance.net.mode: 'static'
+        guestinfo.cis.appliance.net.addr: '{{ cwom_address }}' 
+        guestinfo.cis.appliance.net.pnid: "{{ cwom_hostname }}.{{ domain }}" 
+        guestinfo.cis.appliance.net.prefix: '{{ net_prefix }}' 
+        guestinfo.cis.appliance.net.gateway: '{{ net_gateway }}' 
+        guestinfo.cis.appliance.net.dns.servers: '{{ dns_servers }}' 
+        guestinfo.cis.appliance.root.passwd: '{{ cwom_password }}' 
+        guestinfo.cis.ceip_enabled: "False"
+        guestinfo.cis.appliance.ssh.enabled: "True"
+        guestinfo.cis.appliance.ntp.servers: "172.20.1.254"
+        guestinfo.cis.deployment.autoconfig: 'True' 
+        guestinfo.cis.vmdir.password: '{{ cwom_password }}' 
+        domain: '{{ domain }}'
+        searchpath: '{{ searchpath }}'
+    delegate_to: localhost
+  - name: Wait for vCenter
+    vmware_about_facts:
+      hostname: '{{ vcenter_address }}'
+      username: '{{ vcenter_username }}'
+      password: '{{ vcenter_password }}'
+      validate_certs: no
+    delegate_to: localhost
+    retries: 20
+    delay: 60
+    register: result           
+    until: result is succeeded
+
+  - name: Delete content & directory
+    file:
+      state: absent
+      path: /mnt/iso
+
+  - name: Pass on cwom host ip
+    set_stats:
+      data:
+        cwom_host_ip: '{{ cwom_hostname }}'
