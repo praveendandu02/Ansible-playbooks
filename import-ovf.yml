@@ -1,0 +1,54 @@
+---
+- hosts: localhost
+  name: Import OVF to Vcenter
+  vars:
+    vsphere_vcenter_server: "172.16.10.20"
+    vsphere_vcenter_username: "administrator@vsphere.local"
+    vsphere_vcenter_password: ""
+    vsphere_datacenter: "CG61"
+    vsphere_cluster: "CG61"
+    vsphere_datastore: "CG61"
+    vsphere_network: "Storage Controller Management Network"
+
+  tasks:
+  - name: Create a directory if it does not exist
+    file:
+      path: playbook_dir/repo
+      state: directory
+      mode: '0755'
+
+  - name: Download OVF
+    get_url:
+      url: http://172.16.65.132/Software/Netbox/netbox-template-2.10.4/{{ item }}
+      dest: playbook_dir/repo
+    loop:
+      - netbox-template-1.vmdk
+      - netbox-template-1.vmdk:Zone.Identifier
+      - netbox-template-2.nvram
+      - netbox-template-2.nvram:Zone.Identifier
+      - netbox-template.mf
+      - netbox-template.mf:Zone.Identifier
+      - netbox-template.ovf
+      - netbox-template.ovf:Zone.Identifier
+
+  - name: Import OVF to vCenter
+    vmware_deploy_ovf:
+      hostname: '{{ vsphere_vcenter_server }}'
+      username: '{{ vsphere_vcenter_username }}'
+      password: '{{ vsphere_vcenter_password }}'
+      datacenter: "{{ vsphere_datacenter }}"
+      cluster: "{{ vsphere_cluster }}"
+      datastore: "{{ vsphere_datastore }}"
+      name: netboxVM
+      folder: netbox
+      validate_certs: no   
+      power_on: no
+      networks: "{u'VM Network':u'{{ vsphere_network }}'}"
+      ovf: playbook_dir/repo/netbox-template.ovf
+    delegate_to: localhost
+
+
+  - name: Delete OVF  
+    file:
+      path: playbook_dir/repo
+      state: absent
